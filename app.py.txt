@@ -1,0 +1,38 @@
+import streamlit as st
+from transformers import pipeline
+from TTS.api import TTS
+import os
+
+# Page config
+st.set_page_config(page_title="Ramblay le Raton", page_icon="🦝")
+
+st.title("🦝 Ramblay le Raton Laveur")
+st.write("Bienvenue à Indigo Park ! Ramblay est là pour discuter avec toi. Pose-lui une question ou raconte-lui ta journée.")
+
+# Chargement des modèles
+@st.cache_resource
+def load_models():
+    chatbot = pipeline("text-generation", model="EleutherAI/gpt-neo-1.3B")
+    tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", progress_bar=False)
+    return chatbot, tts
+
+chatbot, tts = load_models()
+
+# Entrée utilisateur
+user_input = st.text_input("💬 Que veux-tu dire à Ramblay ?")
+
+if user_input:
+    with st.spinner("Ramblay réfléchit..."):
+        prompt = f\"\"\"Tu es Ramblay, un raton laveur drôle, gentil, un peu farceur. Tu vis à Indigo Park et tu aides les humains en discutant avec eux.\nHumain: {user_input}\nRamblay:\"\"\"
+        result = chatbot(prompt, max_new_tokens=100, do_sample=True, temperature=0.7)[0]['generated_text']
+        response_text = result.split("Ramblay:")[-1].strip()
+
+        # Synthèse vocale
+        audio_path = \"ramblay_response.wav\"
+        tts.tts_to_file(text=response_text, file_path=audio_path)
+
+        # Affichage
+        st.subheader(\"🦝 Ramblay répond :\")    
+        st.write(response_text)
+        audio_file = open(audio_path, \"rb\")
+        st.audio(audio_file.read(), format=\"audio/wav\")
